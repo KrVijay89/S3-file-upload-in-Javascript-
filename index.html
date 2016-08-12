@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AWS S3 File Upload</title>
+    <meta name="keywords" content="HTML,CSS,JavaScript">
+    <meta name="Vijay Kumar(vijay.tlcom@gmail.com)" content="Web Project">
+    <meta http-equiv="refresh" content="30">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://code.jquery.com/jquery-2.2.4.js"></script>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1.12.min.js"></script>
+</head>
+<body>
+<input type="file" id="file-chooser" />
+<button id="upload-button">Upload to S3</button>
+<script type="text/javascript">
+    $(document).ready(function(){
+
+        var uploadProgress ='';
+        var filupload = '';
+        var sizeLimit      = 105857600000000000000000; // Define the Max size of the file
+        var creds = { // Define the your AWS credentials
+            bucket: 'Your-Bucket-name',
+            access_key: 'Your-access-key',
+            secret_key: 'Your-secret-key'
+        };
+
+        $('#upload-button').click(function(){
+
+            // Get the file object
+            var fileInput = document.getElementById('file-chooser');
+            var file = fileInput.files[0];
+            // Call the file upload function
+            upload(file);
+        });
+
+        function upload(file){
+            var s3url = '';
+            AWS.config.update({ accessKeyId: creds.access_key, secretAccessKey: creds.secret_key });
+            AWS.config.region = 'us-east-1';
+            var bucket = new AWS.S3({ params: { Bucket: creds.bucket } });
+
+            if(file) {
+                // Perform File Size Check First
+                var fileSize = Math.round(parseInt(file.size));
+                if (fileSize > sizeLimit) {
+                    console.warn('Sorry, your attachment is too big');
+                    return false;
+                }
+                // Convert file name to some unique file name
+                var uniqueFileName = uniqueString() + '-' + file['name'];
+                var params = { Key: uniqueFileName, ContentType: file.type, Body: file, ServerSideEncryption: 'AES256' };
+                // Start uploading to AWS S3 bucket
+                bucket.putObject(params, function(err, data) {
+                    if(err) {
+                        // Check for any kind of error
+                        console.error('Not able to Upload', err);
+                        return false;
+                    }
+                    else {
+                        // Successfully upload the file on AWS S3 bucket
+                        setTimeout(function() {
+                            // Reset the progress bar value
+                            uploadProgress = 0;
+
+                        }, 4000);
+                        // Your Bucket path
+                        // Example 'https://s3-ap-southeast-1.amazonaws.com/bucket-name/'
+                        s3url = 'Your-AWS-bucket-path' + uniqueFileName;
+                        filupload = s3url;
+                    }
+                })
+                .on('httpUploadProgress',function(progress) {
+                    // Checking for the File progress
+                    // Can be used to show the progress bar
+                    uploadProgress = Math.round(progress.loaded / progress.total * 100);
+                });
+                return s3url;
+            }
+            else {
+                // No File Selected
+                console.warn('Please select a file to upload')
+            }
+
+
+            function fileSizeLabel() {
+                // Convert Bytes To MB
+                return Math.round(sizeLimit / 1024 / 1024) + 'MB';
+            }
+
+            function uniqueString(){
+                // Function is used to give the code name to file
+                // to avoid the duplicate naming of file
+                var text     = "";
+                var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+                for( var i=0; i < 8; i++ ) {
+                    text += possible.charAt(Math.floor(Math.random() * possible.length));
+                }
+                return text;
+            }
+        }
+    });
+</script>
+</body>
+</html>
